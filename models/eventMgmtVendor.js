@@ -14,19 +14,15 @@ const EventManagementVendorSchema = new mongoose.Schema(
         },
         wedding_packages: [
             { 
-                type: mongoose.Schema.Types.ObjectId, ref: 'WeddingPackage' 
+                type: mongoose.Schema.Types.ObjectId, 
+                ref: 'WeddingPackage' 
             }
         ],
         venues: [
             { 
-                type: mongoose.Schema.Types.ObjectId, ref: 'Venue' 
+                type: mongoose.Schema.Types.ObjectId, 
+                ref: 'Venue' 
             }
-        ],
-        wedding_packages: [
-            {
-              type: mongoose.Schema.Types.ObjectId,
-              ref: 'WeddingPackage',
-            },
         ],
     }, 
      { timestamps: true }
