@@ -49,6 +49,14 @@ exports.getPackageById = async (req, res) => {
         capacity,
         createdBy: decoded.id, 
       });
+
+      const eventMgmtVendor = await EventManagementVendor.findOne({ user_id: decoded.id });
+    if (!eventMgmtVendor) {
+      return res.status(404).json({ error: 'Event Management Vendor not found.' });
+    }
+    eventMgmtVendor.wedding_packages.push(newPackage._id);
+    await eventMgmtVendor.save();
+
   
       res.status(201).json({
         message: 'Wedding package created successfully!',
@@ -72,6 +80,19 @@ exports.getPackageById = async (req, res) => {
       }
   
       const updatedPackage = await WeddingPackage.findByIdAndUpdate(req.params.id, req.body, { new: true });
+      
+      const eventMgmtVendor = await eventMgmtVendor.findOne({ user_id: decoded.id });
+      if (eventMgmtVendor) {
+        const packageIndex = eventMgmtVendor.wedding_packages.findIndex(
+          (pkgId) => pkgId.toString() === updatedPackage._id.toString()
+        );
+  
+        if (packageIndex !== -1) {
+          eventMgmtVendor.wedding_packages[packageIndex] = updatedPackage._id; 
+          await eventMgmtVendor.save();
+        }
+      }
+      
       res.status(200).json({
         message: 'Wedding package updated successfully!',
         package: updatedPackage,
@@ -94,6 +115,15 @@ exports.getPackageById = async (req, res) => {
       }
   
       await WeddingPackage.findByIdAndDelete(req.params.id);
+
+      const eventMgmtVendor = await EventManagementVendor.findOne({ user_id: decoded.id });
+      if (eventMgmtVendor) {
+        eventMgmtVendor.wedding_packages = eventMgmtVendor.wedding_packages.filter(
+          (pkgId) => pkgId.toString() !== req.params.id
+        );
+        await eventMgmtVendor.save();
+      }
+  
       res.status(200).json({ message: 'Wedding package deleted successfully!' });
     } catch (error) {
       res.status(500).json({ error: error.message });
