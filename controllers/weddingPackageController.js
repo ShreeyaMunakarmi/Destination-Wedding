@@ -50,7 +50,7 @@ exports.getPackageById = async (req, res) => {
         createdBy: decoded.id, 
       });
 
-      const eventMgmtVendor = await EventManagementVendor.findOne({ user_id: decoded.id });
+      const eventMgmtVendor = await eventMgmtVendor.findOne({ user_id: decoded.id });
     if (!eventMgmtVendor) {
       return res.status(404).json({ error: 'Event Management Vendor not found.' });
     }
@@ -116,7 +116,7 @@ exports.getPackageById = async (req, res) => {
   
       await WeddingPackage.findByIdAndDelete(req.params.id);
 
-      const eventMgmtVendor = await EventManagementVendor.findOne({ user_id: decoded.id });
+      const eventMgmtVendor = await eventMgmtVendor.findOne({ user_id: decoded.id });
       if (eventMgmtVendor) {
         eventMgmtVendor.wedding_packages = eventMgmtVendor.wedding_packages.filter(
           (pkgId) => pkgId.toString() !== req.params.id

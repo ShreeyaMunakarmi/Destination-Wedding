@@ -83,7 +83,7 @@ exports.updateVendor = async (req, res) => {
       }
 
       const updatedVendor = await Vendor.findByIdAndUpdate(req.params.id, req.body, { new: true });
-      const eventMgmtVendor = await EventManagementVendor.findOne({ vendor_id: req.params.id });
+      const eventMgmtVendor = await eventMgmtVendor.findOne({ vendor_id: req.params.id });
     if (eventMgmtVendor) {
       eventMgmtVendor.vendor_id = updatedVendor._id; 
       await eventMgmtVendor.save();
