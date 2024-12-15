@@ -5,4 +5,12 @@ const { register, login, getAllUsers, getUserById , updateUser, deleteUser} = re
 router.post('/register' , register);
 router.post ('/login' , login);
 
+router.route("/")
+    .get(getAllUsers);
 
+router.route("/:id")
+    .get(getUserById)
+    .put(updateUser)
+    .delete(deleteUser);
+
+module.exports = router;
