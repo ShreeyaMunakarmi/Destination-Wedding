@@ -7,7 +7,7 @@ router.route("/")
 
 router.route("/:id")
     .get(adminController.getAdminById)
-    .update(adminController.updateAdmin)
+    .put(adminController.updateAdmin)
     .delete(adminController.deleteAdmin);
 
 module.exports = router;

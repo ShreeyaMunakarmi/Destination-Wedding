@@ -8,6 +8,7 @@ const venueRoutes = require ("./routes/venueRoutes");
 const vendorRoutes = require ("./routes/vendorRoutes");
 const eventMgmtVendorRoutes = require ("./routes/eventMgmtVendorRoutes");
 const adminRoutes = require ("./routes/adminRoutes");
+const cors = require('cors'); 
 
 const app = express();
 app.use(cors());
