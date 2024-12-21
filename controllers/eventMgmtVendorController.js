@@ -1,110 +1,133 @@
-const bcrypt = require('bcryptjs');
-const mongoose = require('mongoose');
-const jwt = require('jsonwebtoken');
-const User = require('../models/user');
-const Booking = require('../models/booking');
-const EventMgmtVendor = require('../models/eventMgmtVendor');
-const Vendor = require('../models/vendor');
-const Venue = require('../models/venue');
-const WeddingPackageController = require('../models/weddingPackage');
-const Admin = require('../models/Admin');
+import sanitize from 'mongo-sanitize';
+import EventMgmtVendor from '../models/eventMgmtVendor.js';
+import User from '../models/user.js'; // Ensure User model is imported
+import logger from '../utils/logger.js'; // Import logger for consistent logging
 
-const JWT_SECRET = process.env.JWT_SECRET;
+// Get all Event Management Vendors
+export const getAllEventMgmtVendors = async (req, res, next) => {
+  try {
+    const vendors = await EventMgmtVendor.find()
+      .populate('user_id', 'username email') // Populate user details
+      .populate('vendor_id', 'name service_type') // Populate vendor details
+      .populate('wedding_packages', 'name price') // Populate wedding packages
+      .populate('venues', 'name location capacity'); // Populate venues
 
-exports.getAllEventMgmtVendors = async (req, res) => {
-    try {
-      const vendors = await EventMgmtVendor.find()
-        .populate('user_id', 'username email') 
-        .populate('vendor_id', 'name service_type') 
-        .populate('wedding_packages', 'name price') 
-        .populate('venues', 'name location capacity'); 
-      res.status(200).json(vendors);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  };
+    logger.info('Fetched all Event Management Vendors successfully.');
+    res.status(200).json(vendors);
+  } catch (error) {
+    logger.error('Error fetching Event Management Vendors', { error: error.message });
+    next({ statusCode: 500, message: 'Failed to fetch Event Management Vendors.', error });
+  }
+};
 
-  exports.getEventMgmtVendorById = async (req, res) => {
-    try {
-      const vendor = await EventMgmtVendor.findById(req.params.id)
-        .populate('user_id', 'username email')
-        .populate('vendor_id', 'name service_type')
-        .populate('wedding_packages', 'name price')
-        .populate('venues', 'name location capacity');
-      if (!vendor) {
-        return res.status(404).json({ error: 'Event Management Vendor not found!' });
-      }
-      res.status(200).json(vendor);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  };
+// Get an Event Management Vendor by ID
+export const getEventMgmtVendorById = async (req, res, next) => {
+  try {
+    const vendor = await EventMgmtVendor.findById(req.params.id)
+      .populate('user_id', 'username email')
+      .populate('vendor_id', 'name service_type')
+      .populate('wedding_packages', 'name price')
+      .populate('venues', 'name location capacity');
 
-  exports.createEventMgmtVendor = async (req, res) => {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-  
-      if (decoded.role !== 'admin') {
-        return res.status(403).json({ error: 'Access denied. Only admins can create event management vendors.' });
-      }
-  
-      const { user_id, vendor_id } = req.body;
-      const newVendor = await EventMgmtVendor.create({
-        user_id,
-        vendor_id,
-      });
-  
-      res.status(201).json({
-        message: 'Event Management Vendor created successfully!',
-        vendor: newVendor,
-      });
-    } catch (error) {
-      res.status(400).json({ error: error.message });
+    if (!vendor) {
+      return next({ statusCode: 404, message: 'Event Management Vendor not found.', vendorId: req.params.id });
     }
-  };
-  
-  exports.updateEventMgmtVendor = async (req, res) => {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-  
-      if (decoded.role !== 'admin') {
-        return res.status(403).json({ error: 'Access denied. Only admins can update event management vendors.' });
-      }
-  
-      const vendor = await EventMgmtVendor.findById(req.params.id);
-      if (!vendor) {
-        return res.status(404).json({ error: 'Event Management Vendor not found!' });
-      }
-  
-      const updatedVendor = await EventMgmtVendor.findByIdAndUpdate(req.params.id, req.body, { new: true });
-      res.status(200).json({
-        message: 'Event Management Vendor updated successfully!',
-        vendor: updatedVendor,
-      });
-    } catch (error) {
-      res.status(400).json({ error: error.message });
+
+    logger.info(`Fetched Event Management Vendor ${req.params.id} successfully.`);
+    res.status(200).json(vendor);
+  } catch (error) {
+    logger.error(`Error fetching Event Management Vendor ${req.params.id}`, { error: error.message });
+    next({ statusCode: 500, message: 'Failed to fetch Event Management Vendor.', error });
+  }
+};
+
+// Create a new Event Management Vendor
+export const createEventMgmtVendor = async (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return next({ statusCode: 403, message: 'Access denied. Only admins can create Event Management Vendors.' });
     }
-  };
-  
-  exports.deleteEventMgmtVendor = async (req, res) => {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-  
-      if (decoded.role !== 'admin') {
-        return res.status(403).json({ error: 'Access denied. Only admins can delete event management vendors.' });
-      }
-  
-      const vendor = await EventMgmtVendor.findById(req.params.id);
-      if (!vendor) {
-        return res.status(404).json({ error: 'Event Management Vendor not found!' });
-      }
-  
-      await EventMgmtVendor.findByIdAndDelete(req.params.id);
-      res.status(200).json({ message: 'Event Management Vendor deleted successfully!' });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
+
+    const { user_id, vendor_id } = sanitize(req.body);
+
+    // Check if the user exists
+    const user = await User.findById(user_id);
+    if (!user) {
+      return next({ statusCode: 404, message: 'User not found.', userId: user_id });
     }
-  };
+
+    // Check if the user is already an Event Management Vendor
+    if (user.role === 'eventMgmtVendor') {
+      return next({ statusCode: 400, message: 'User is already an Event Management Vendor.' });
+    }
+
+    // Create the new Event Management Vendor
+    const newVendor = await EventMgmtVendor.create({
+      user_id,
+      vendor_id,
+    });
+
+    // Update the user's role to 'eventMgmtVendor'
+    user.role = 'eventMgmtVendor';
+    await user.save();
+
+    logger.info(`Event Management Vendor ${newVendor._id} created by admin ${req.user.id}.`);
+    res.status(201).json({
+      message: 'Event Management Vendor created successfully!',
+      vendor: newVendor,
+    });
+  } catch (error) {
+    logger.error('Error creating Event Management Vendor', { error: error.message });
+    next({ statusCode: 400, message: 'Failed to create Event Management Vendor.', error });
+  }
+};
+
+// Update an Event Management Vendor
+export const updateEventMgmtVendor = async (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return next({ statusCode: 403, message: 'Access denied. Only admins can update Event Management Vendors.' });
+    }
+
+    const vendor = await EventMgmtVendor.findById(req.params.id);
+    if (!vendor) {
+      return next({ statusCode: 404, message: 'Event Management Vendor not found.', vendorId: req.params.id });
+    }
+
+    const updatedVendor = await EventMgmtVendor.findByIdAndUpdate(req.params.id, sanitize(req.body), {
+      new: true,
+      runValidators: true,
+    });
+
+    logger.info(`Event Management Vendor ${req.params.id} updated by admin ${req.user.id}.`);
+    res.status(200).json({
+      message: 'Event Management Vendor updated successfully!',
+      vendor: updatedVendor,
+    });
+  } catch (error) {
+    logger.error(`Error updating Event Management Vendor ${req.params.id}`, { error: error.message });
+    next({ statusCode: 400, message: 'Failed to update Event Management Vendor.', error });
+  }
+};
+
+// Delete an Event Management Vendor
+export const deleteEventMgmtVendor = async (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return next({ statusCode: 403, message: 'Access denied. Only admins can delete Event Management Vendors.' });
+    }
+
+    const vendor = await EventMgmtVendor.findById(req.params.id);
+    if (!vendor) {
+      return next({ statusCode: 404, message: 'Event Management Vendor not found.', vendorId: req.params.id });
+    }
+
+    await EventMgmtVendor.findByIdAndDelete(req.params.id);
+
+    logger.info(`Event Management Vendor ${req.params.id} deleted by admin ${req.user.id}.`);
+    res.status(200).json({ message: 'Event Management Vendor deleted successfully!' });
+  } catch (error) {
+    logger.error(`Error deleting Event Management Vendor ${req.params.id}`, { error: error.message });
+    next({ statusCode: 500, message: 'Failed to delete Event Management Vendor.', error });
+  }
+};

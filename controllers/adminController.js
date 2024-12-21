@@ -1,101 +1,117 @@
-const bcrypt = require('bcryptjs');
-const mongoose = require('mongoose');
-const jwt = require('jsonwebtoken');
-const User = require('../models/user');
-const Booking = require('../models/booking');
-const EventMgmtVendor = require('../models/eventMgmtVendor');
-const Vendor = require('../models/vendor');
-const Venue = require('../models/venue');
-const WeddingPackageController = require('../models/weddingPackage');
-const Admin = require('../models/Admin');
+import sanitize from 'mongo-sanitize';
+import bcrypt from 'bcryptjs';
+import Admin from '../models/admin.js';
+import User from '../models/user.js';
+import logger from '../utils/logger.js'; // Import logger for consistent logging
 
-const JWT_SECRET = process.env.JWT_SECRET;
+// Create a new Admin
+export const createAdmin = async (req, res, next) => {
+  try {
+    const { username, email, password, contact_details } = sanitize(req.body);
 
-exports.createAdmin = async(req,res) => {
-    try{
-        const { username, email, password } = req.body;
-        const hashedPassword = await bcrypt.hash(password,10);
-    
-        const newAdmin = await Admin.create({
-            username,
-            email,
-            password : hashedPassword,
-        });
-        
-        res.status(201).json({
-            message: 'Admin created successfully!',
-            admin: {
-                id: newAdmin._id,
-                username: newAdmin.username,
-                email: newAdmin.email,
-            }
-        });
-} catch (error) {
-    res.status(400).json({ error: error.message });
-}
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create the admin in the Admin collection
+    const newAdmin = await Admin.create({
+      username,
+      email,
+      password: hashedPassword,
+      contact_details,
+    });
+
+    // Add the admin to the User collection with role 'admin'
+    const newUser = await User.create({
+      username,
+      email,
+      password: hashedPassword,
+      contact_details,
+      role: 'admin',
+    });
+
+    logger.info(`Admin ${newAdmin._id} created successfully.`);
+    res.status(201).json({
+      message: 'Admin created successfully!',
+      admin: {
+        id: newAdmin._id,
+        username: newAdmin.username,
+        email: newAdmin.email,
+        contact_details: newAdmin.contact_details,
+      },
+      user: {
+        id: newUser._id,
+        username: newUser.username,
+        email: newUser.email,
+        role: newUser.role,
+        contact_details: newUser.contact_details,
+      },
+    });
+  } catch (error) {
+    logger.error('Error creating admin', { error: error.message });
+    next({ statusCode: 400, message: 'Failed to create admin.', error });
+  }
 };
 
-exports.getAdminById = async (req, res) => {
-    try {
-      const admin = await Admin.findById(req.params.id).select('-password'); // Exclude the password field
-      if (!admin) {
-        return res.status(404).json({ error: 'Admin not found!' });
-      }
-  
-      res.status(200).json(admin);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
+// Get an Admin by ID
+export const getAdminById = async (req, res, next) => {
+  try {
+    const admin = await Admin.findById(req.params.id).select('-password'); // Exclude password field
+    if (!admin) {
+      return next({ statusCode: 404, message: 'Admin not found.', adminId: req.params.id });
     }
-  };
-  
-  exports.updateAdmin = async (req, res) => {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-  
-      if (decoded.role !== 'admin') {
-        return res.status(403).json({ error: 'Access denied. Only admins can update admin details.' });
-      }
-  
-      const { username, email, password } = req.body;
-  
-      const updatedData = {};
-      if (username) updatedData.username = username;
-      if (email) updatedData.email = email;
-      if (password) updatedData.password = await bcrypt.hash(password, 10); 
-  
-      const updatedAdmin = await Admin.findByIdAndUpdate(req.params.id, updatedData, { new: true }).select('-password');
-      if (!updatedAdmin) {
-        return res.status(404).json({ error: 'Admin not found!' });
-      }
-  
-      res.status(200).json({
-        message: 'Admin updated successfully!',
-        admin: updatedAdmin,
-      });
-    } catch (error) {
-      res.status(400).json({ error: error.message });
+
+    logger.info(`Fetched Admin ${req.params.id} successfully.`);
+    res.status(200).json(admin);
+  } catch (error) {
+    logger.error(`Error fetching Admin ${req.params.id}`, { error: error.message });
+    next({ statusCode: 500, message: 'Failed to fetch admin.', error });
+  }
+};
+
+// Update an Admin
+export const updateAdmin = async (req, res, next) => {
+  try {
+    const { username, email, password } = sanitize(req.body);
+
+    const updatedData = {};
+    if (username) updatedData.username = username;
+    if (email) updatedData.email = email;
+    if (password) updatedData.password = await bcrypt.hash(password, 10);
+
+    const updatedAdmin = await Admin.findByIdAndUpdate(req.params.id, updatedData, {
+      new: true,
+      runValidators: true,
+    }).select('-password');
+
+    if (!updatedAdmin) {
+      return next({ statusCode: 404, message: 'Admin not found.', adminId: req.params.id });
     }
-  };
-  
-  exports.deleteAdmin = async (req, res) => {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-  
-      if (decoded.role !== 'admin') {
-        return res.status(403).json({ error: 'Access denied. Only admins can delete admin accounts.' });
-      }
-  
-      const admin = await Admin.findById(req.params.id);
-      if (!admin) {
-        return res.status(404).json({ error: 'Admin not found!' });
-      }
-  
-      await Admin.findByIdAndDelete(req.params.id);
-  
-      res.status(200).json({ message: 'Admin deleted successfully!' });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
+
+    logger.info(`Admin ${req.params.id} updated successfully.`);
+    res.status(200).json({
+      message: 'Admin updated successfully!',
+      admin: updatedAdmin,
+    });
+  } catch (error) {
+    logger.error(`Error updating Admin ${req.params.id}`, { error: error.message });
+    next({ statusCode: 400, message: 'Failed to update admin.', error });
+  }
+};
+
+// Delete an Admin
+export const deleteAdmin = async (req, res, next) => {
+  try {
+    const admin = await Admin.findById(req.params.id);
+    if (!admin) {
+      return next({ statusCode: 404, message: 'Admin not found.', adminId: req.params.id });
     }
-  };
+
+    await Admin.findByIdAndDelete(req.params.id);
+
+    logger.info(`Admin ${req.params.id} deleted successfully.`);
+    res.status(200).json({ message: 'Admin deleted successfully!' });
+  } catch (error) {
+    logger.error(`Error deleting Admin ${req.params.id}`, { error: error.message });
+    next({ statusCode: 500, message: 'Failed to delete admin.', error });
+  }
+};

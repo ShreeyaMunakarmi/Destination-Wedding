@@ -1,31 +1,33 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const EventManagementVendorSchema = new mongoose.Schema(
-    {
-        user_id: { 
-            type: mongoose.Schema.Types.ObjectId, 
-            ref: 'User', 
-            required: true 
-        },
-        vendor_id: { 
-            type: mongoose.Schema.Types.ObjectId, 
-            ref: 'Vendor', 
-            required: true 
-        },
-        wedding_packages: [
-            { 
-                type: mongoose.Schema.Types.ObjectId, 
-                ref: 'WeddingPackage' 
-            }
-        ],
-        venues: [
-            { 
-                type: mongoose.Schema.Types.ObjectId, 
-                ref: 'Venue' 
-            }
-        ],
-    }, 
-     { timestamps: true }
+  {
+    user_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    vendor_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Vendor',
+      required: true,
+    },
+    wedding_packages: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'WeddingPackage',
+      },
+    ],
+    venues: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Venue',
+      },
+    ],
+  },
+  { timestamps: true }
 );
 
-module.exports = mongoose.model('EventManagementVendor', EventManagementVendorSchema);
+const EventManagementVendor = mongoose.model('EventManagementVendor', EventManagementVendorSchema);
+
+export default EventManagementVendor;

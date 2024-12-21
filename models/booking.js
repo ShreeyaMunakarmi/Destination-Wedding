@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const BookingSchema = new mongoose.Schema(
     {
@@ -10,17 +10,21 @@ const BookingSchema = new mongoose.Schema(
         package_id: { 
             type: mongoose.Schema.Types.ObjectId, 
             ref: 'WeddingPackage', 
-            required: true 
+            required: true,
         },
         booking_date: { 
             type: Date, 
-            default: Date.now 
+            default: Date.now,
         },
         status: { 
-            type: String, default: 'Pending', enum: ['Pending', 'Confirmed', 'Cancelled'] 
+            type: String, 
+            default: 'Pending', 
+            enum: ['Pending', 'Confirmed', 'Cancelled'],
         },
     }, 
     { timestamps: true }
 );
 
-module.exports = mongoose.model('Booking', BookingSchema);
+const Booking = mongoose.model('Booking' , BookingSchema);
+
+export default Booking;

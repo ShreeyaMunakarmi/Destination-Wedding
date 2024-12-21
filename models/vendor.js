@@ -1,21 +1,22 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const VendorSchema = new mongoose.Schema(
-    {
-        name: { 
-            type: String, 
-            required: true 
-        },
-        service_type: { 
-            type: String, 
-            required: true 
-        },
-        contact_details: { 
-            type: String 
-        },
-        
+  {
+    name: {
+      type: String,
+      required: true,
     },
-     { timestamps: true }
+    service_type: {
+      type: String,
+      required: true,
+    },
+    contact_details: {
+      type: String,
+    },
+  },
+  { timestamps: true }
 );
 
-module.exports = mongoose.model('Vendor', VendorSchema);
+const Vendor = mongoose.model('Vendor', VendorSchema);
+
+export default Vendor;
